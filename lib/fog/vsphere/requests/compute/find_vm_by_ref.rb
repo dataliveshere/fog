@@ -23,7 +23,29 @@ module Fog
           response
         end
 
-      end
+        def get_vm_mob_ref_by_path (options = {})
+          raise ArgumentError, "Must pass a path option" unless options['path']
+          path_elements = options['path'].split('/').tap { |ary| ary.shift 2 }
+          # The DC name itself.
+          template_dc = path_elements.shift
+          # If the first path element contains "vm" this denotes the vmFolder
+          # and needs to be shifted out
+          path_elements.shift if path_elements[0] == 'vm'
+          # The template name.  The remaining elements are the folders in the
+          # datacenter.
+          template_name = path_elements.pop
+          dc_mob_ref = get_dc_mob_ref_by_path(template_dc)
+          vm_mob_ref = dc_mob_ref.find_vm(template_name)
+          vm_mob_ref
+        end
+
+        def get_vm_mob_ref_by_moid(vm_moid)
+          raise ArgumentError, "Must pass a vm management object id" unless vm_moid
+          vm_mob_ref = RbVmomi::VIM::VirtualMachine.new(@connection,vm_moid)
+          vm_mob_ref
+        end
+
+      end # shared
 
       # The Real and Mock classes share the same method
       # because list_virtual_machines will be properly mocked for us

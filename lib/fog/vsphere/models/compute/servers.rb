@@ -1,3 +1,29 @@
+# Copyright (c) 2012 VMware, Inc. All Rights Reserved.
+#
+#      Licensed under the Apache License, Version 2.0 (the "License");
+#
+#   you may not use this file except in compliance with the License.
+#
+#   You may obtain a copy of the License at
+#
+#
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#
+#
+#
+#   Unless required by applicable law or agreed to in writing, software
+#
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#
+#   See the License for the specific language governing permissions and
+#
+#   limitations under the License.
+
+
 require 'fog/core/collection'
 require 'fog/vsphere/models/compute/server'
 
@@ -9,8 +35,11 @@ module Fog
 
         model Fog::Compute::Vsphere::Server
 
-        # 'path' => '/Datacenters/vm/Jeff/Templates' will be MUCH faster.
-        # than simply listing everything.
+        # Public: list all vms in the given folder
+        # folder - 'folder_path' will work as a filter.
+        # if empty arguments then simply listing everything.
+        #
+        # Returns the vm array
         def all(filters = {})
           # REVISIT: I'm not sure if this is the best way to implement search
           # filters on a collection but it does work.  I need to study the AWS
@@ -20,6 +49,10 @@ module Fog
           load(response['virtual_machines'])
         end
 
+        # Public: get vm with given id
+        # id - can be vm management object id or instance_uuid
+        #
+        # Returns the server object with given id
         def get(id)
           # Is the id a managed_object_reference?  This may be the case if we're reloading
           # a model of a VM in the process of being cloned, since it

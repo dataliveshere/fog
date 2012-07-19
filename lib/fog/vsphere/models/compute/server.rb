@@ -34,31 +34,28 @@ module Fog
         attribute :connection_state
         attribute :mo_ref
         attribute :path
-        attribute :memory_mb
-        attribute :cpus
+        attribute :max_cpu
+        attribute :max_mem
 
         def vm_reconfig_memory(options = {})
           requires :instance_uuid, :memory
           connection.vm_reconfig_memory('instance_uuid' => instance_uuid, 'memory' => memory)
         end
-
         def vm_reconfig_cpus(options = {})
           requires :instance_uuid, :cpus
           connection.vm_reconfig_cpus('instance_uuid' => instance_uuid, 'cpus' => cpus)
         end
-
         def vm_reconfig_hardware(options = {})
           requires :instance_uuid, :hardware_spec
           connection.vm_reconfig_hardware('instance_uuid' => instance_uuid, 'hardware_spec' => hardware_spec)
         end
-
         def start(options = {})
           requires :instance_uuid
           connection.vm_power_on('instance_uuid' => instance_uuid)
         end
 
         def stop(options = {})
-          options = { :force => !tools_installed? }.merge(options)
+          options = { :force => false }.merge(options)
           requires :instance_uuid
           connection.vm_power_off('instance_uuid' => instance_uuid, 'force' => options[:force])
         end
@@ -81,19 +78,24 @@ module Fog
         end
 
         def create(options ={})
-          requires :name, :path
+          requires :name
+          create_results = connection.vm_create(options)
           new_vm = self.class.new(create_results['vm_attributes'])
           new_vm.collection = self.collection
           new_vm.connection = self.connection
           new_vm
         end
 
+        # Public: clone vm from template to given destination
+        # name - vm name to cloned as
+        # datastore - datastore management object id used by destination vm
+        # host - host mangement object id where destination vm will be provisioned from
+        # cluster - cluster id belong to the destination vm
+        #
+        # Returns is server cloned with the given destination resources
         def clone(options = {})
-          requires :name, :path
           # Convert symbols to strings
           req_options = options.inject({}) { |hsh, (k,v)| hsh[k.to_s] = v; hsh }
-          # Give our path to the request
-          req_options['path'] ="#{path}/#{name}"
           # Perform the actual clone
           clone_results = connection.vm_clone(req_options)
           # Create the new VM model.
@@ -104,30 +106,6 @@ module Fog
           new_vm.connection = self.connection
           # Return the new VM model.
           new_vm
-        end
-
-        def ready?
-          power_state == "poweredOn"
-        end
-
-        def tools_installed?
-          tools_state != "toolsNotInstalled"
-        end
-
-        # defines VNC attributes on the hypervisor
-        def config_vnc(options = {})
-          requires :instance_uuid
-          connection.vm_config_vnc(options.merge('instance_uuid' => instance_uuid))
-        end
-
-        # returns a hash of VNC attributes required for connection
-        def vnc
-          requires :instance_uuid
-          connection.vm_get_vnc(instance_uuid)
-        end
-
-        def memory
-          memory_mb * 1024 * 1024
         end
 
       end

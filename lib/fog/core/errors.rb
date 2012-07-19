@@ -44,9 +44,6 @@ An alternate file may be used by placing its path in the FOG_RC environment vari
   :go_grid_shared_secret:
   :google_storage_access_key_id:
   :google_storage_secret_access_key:
-  :hp_account_id:
-  :hp_secret_key:
-  :hp_tenant_id:
   :linode_api_key:
   :local_root:
   :bare_metal_cloud_password:
@@ -65,6 +62,7 @@ An alternate file may be used by placing its path in the FOG_RC environment vari
   :rackspace_username:
   :rackspace_servicenet:
   :rackspace_cdn_ssl:
+  :slicehost_password:
   :stormondemand_username:
   :stormondemand_password:
   :terremark_username:
@@ -93,7 +91,7 @@ An alternate file may be used by placing its path in the FOG_RC environment vari
 # End of Fog Credentials File
 #######################################################
 
-    YML
+      YML
       raise(Fog::Errors::LoadError.new(missing_credentials_message))
     end
 
