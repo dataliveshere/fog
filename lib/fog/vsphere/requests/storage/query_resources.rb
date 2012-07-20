@@ -226,9 +226,11 @@ module Fog
               host_resource.connection_state = host_mob_ref.summary.runtime.connectionState
               host_datastores = host_mob_ref.datastore
               Fog::Logger.deprecation ( "host_datastores size = #{host_datastores.size}")
+              host_resource.share_datastores = []
               host_resource.share_datastores = fetch_datastores(host_datastores,
                                                                 @share_datastore_pattern, true)
               Fog::Logger.deprecation("warning: no matched sharestores in host:#{host_resource.name}") if host_resource.share_datastores.empty?
+              host_resource.local_datastores = []
               host_resource.local_datastores = fetch_datastores(host_datastores,
                                                                 @local_datastore_pattern, false)
               Fog::Logger.deprecation("warning: no matched localstores in host:#{host_resource.name}") if host_resource.local_datastores.empty?

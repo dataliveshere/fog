@@ -181,7 +181,7 @@ module Fog
             options['type'] = 'system'
             options['affinity'] = true
             options['size'] = options['system_size']
-            options['shared'] = options['system_shared']
+            options['shared'] = options['system_shared'] || true
             options['mode'] = options['system_mode']|| 'thin'
             @system_disks = Disk.new(options)
             options['type'] = 'swap'
@@ -192,7 +192,7 @@ module Fog
             options['type'] = 'data'
             options['affinity'] = false
             options['size'] = options['data_size']
-            options['shared'] = options['data_shared']
+            options['shared'] = options['data_shared'] || false
             options['mode'] = options['data_mode']
             @data_disks = Disk.new(options)
             @disk_index =0
@@ -393,14 +393,12 @@ module Fog
           fit_hosts = []
           options['hosts'].each do |host_name|
             if @host_list.has_key?(host_name)
-              Fog::Logger.deprecation("----------------------------------------------")
               @host_list[host_name].local_datastores.values.each do |ds|
                 Fog::Logger.deprecation("fog: local ds for host #{host_name} name: #{ds.name}, real_free_space: #{ds.real_free_space}")
               end
               @host_list[host_name].share_datastores.values.each do |ds|
                 Fog::Logger.deprecation("fog: shared ds for host #{host_name} name: #{ds.name}, real_free_space: #{ds.real_free_space}")
               end
-
               Fog::Logger.deprecation("fog: host #{host_name} has been fetched with local size of #{ @host_list[host_name].local_sum}")
               Fog::Logger.deprecation("fog: required size of #{total_local_req_size.to_s}")
               next if @host_list[host_name].connection_state != 'connected'
@@ -424,7 +422,7 @@ module Fog
             vms.each do |vm_in_queue|
               vm = Marshal.load(Marshal.dump(vm_in_queue))
               # place system and swap
-              if vm.system_disks.shared
+              if vm.system_disks.shared && !(@host_list[host_name].share_datastores.empty?)
                 datastore_candidates = @host_list[host_name].share_datastores.values.clone
               else
                 datastore_candidates = @host_list[host_name].local_datastores.values.clone
@@ -476,11 +474,10 @@ module Fog
               end
 
               # place data disks
-              if vm.data_disks.shared && !vm.system_disks.shared
-                datastore_candidates += @host_list[host_name].share_datastores.values.clone
-              end
-              if !vm.data_disks.shared && vm.system_disks.shared
-                datastore_candidates += @host_list[host_name].local_datastores.values.clone
+              if vm.data_disks.shared && !(@host_list[host_name].share_datastores.empty?)
+                datastore_candidates = @host_list[host_name].share_datastores.values.clone
+              else
+                datastore_candidates = @host_list[host_name].local_datastores.values.clone
               end
               datastore_candidates = datastore_candidates.sort {|x,y| x.real_free_space <=> y.real_free_space}
               sum = 0
@@ -552,40 +549,40 @@ module Fog
             #vs = vm.system_disks.volumes.values + vm.swap_disks.volumes.values + vm.data_disks.volumes.values
 
             vm.system_disks.volumes.values.each do |v|
-              Fog::Logger.deprecation("fog: commit system_disk of size-#{v.size} with fullpath-#{v.fullpath} on host-#{vm.host_name}[/]")
+
+              #Fog::Logger.deprecation("fog: commit system_disk of size-#{v.size} with fullpath-#{v.fullpath} on host-#{vm.host_name}[/]")
               if @host_list[vm.host_name].local_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].local_datastores[v.datastore_name].unaccounted_space += v.size
-              elsif @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
-                @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space += v.size
-              else
-                return 'error'
               end
-              Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after commit result - #{v.datastore_name} left size = #{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
+              if @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
+                @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space += v.size
+              end
+              #Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after commit result - #{v.datastore_name} left size = #{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
             end
 
             vm.swap_disks.volumes.values.each do |v|
-              Fog::Logger.deprecation("commit swap_disk of size-#{v.size} with fullpath-#{v.fullpath} on host-#{vm.host_name}[/]")
+              #Fog::Logger.deprecation("commit swap_disk of size-#{v.size} with fullpath-#{v.fullpath} on host-#{vm.host_name}[/]")
               if @host_list[vm.host_name].local_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].local_datastores[v.datastore_name].unaccounted_space += v.size
-              elsif @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
-                @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space += v.size
-              else
-                return 'error'
               end
-              Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after commit result - #{v.datastore_name} left size = #{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
+              if @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
+                @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space += v.size
+              end
+              #Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after commit result - #{v.datastore_name} left size = #{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
             end
 
             vm.data_disks.volumes.values.each do |v|
               Fog::Logger.deprecation("_________________________________________")
-              Fog::Logger.deprecation("fog: commit data_disk of size-#{v.size} on #{v.datastore_name} before size=#{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
               if @host_list[vm.host_name].local_datastores.has_key? (v.datastore_name)
+                Fog::Logger.deprecation("fog: commit data_disk of size-#{v.size} on #{v.datastore_name} before size=#{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
                 @host_list[vm.host_name].local_datastores[v.datastore_name].unaccounted_space += v.size
-              elsif @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
-                @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space += v.size
-              else
-                return 'error'
+                Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after commit result-#{v.datastore_name} local left size=#{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
               end
-              Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after commit result-#{v.datastore_name} left size=#{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
+              if @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
+                Fog::Logger.deprecation("fog: commit data_disk of size-#{v.size} on #{v.datastore_name} before size=#{@host_list[vm.host_name].share_datastores[v.datastore_name].real_free_space}[/]")
+                @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space += v.size
+                Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after commit result-#{v.datastore_name} share left size=#{@host_list[vm.host_name].share_datastores[v.datastore_name].real_free_space}[/]")
+              end
             end
 
           end
@@ -610,10 +607,9 @@ module Fog
               #Fog::Logger.deprecation("fog: for vm.name=#{vm.name}  decommit system_disk of size-#{v.size} with fullpath-#{v.fullpath} on host-#{vm.host_name}[/]")
               if @host_list[vm.host_name].local_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].local_datastores[v.datastore_name].unaccounted_space -= v.size
-              elsif @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
+              end
+              if @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space -= v.size
-              else
-                return 'error'
               end
               #Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after decommit result - #{v.datastore_name} left size = #{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
             end
@@ -622,10 +618,9 @@ module Fog
               #Fog::Logger.deprecation("fog: for vm.name=#{vm.name}  decommit swap_disk of size-#{v.size} with fullpath-#{v.fullpath} on host-#{vm.host_name}[/]")
               if @host_list[vm.host_name].local_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].local_datastores[v.datastore_name].unaccounted_space -= v.size
-              elsif @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
+              end
+              if @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space -= v.size
-              else
-                return 'error'
               end
              #Fog::Logger.deprecation("fog: for vm.name=#{vm.name}  afetr decommit for vm.name=#{vm.name} after commit result - #{v.datastore_name} left size = #{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
             end
@@ -634,10 +629,9 @@ module Fog
               Fog::Logger.deprecation("fog: for vm.name=#{vm.name} decommit data_disk of size-#{v.size} with fullpath-#{v.fullpath} on host-#{vm.host_name}[/]")
               if @host_list[vm.host_name].local_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].local_datastores[v.datastore_name].unaccounted_space -= v.size
-              elsif @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
+              end
+              if @host_list[vm.host_name].share_datastores.has_key? (v.datastore_name)
                 @host_list[vm.host_name].share_datastores[v.datastore_name].unaccounted_space -= v.size
-              else
-                return 'error'
               end
               Fog::Logger.deprecation("fog: for vm.name=#{vm.name} after decommit result - #{v.datastore_name} left size = #{@host_list[vm.host_name].local_datastores[v.datastore_name].real_free_space}[/]")
             end
@@ -645,7 +639,7 @@ module Fog
 
           Fog::Logger.deprecation("finish decommission methods[/]")
           difference =  @host_list[vms[0].host_name].local_sum + @host_list[vms[0].host_name].share_sum - original_size
-          Fog::Logger.deprecation("swcommit size = #{difference}[/]")
+          Fog::Logger.deprecation("decommit size = #{difference}[/]")
           difference
         end
 
