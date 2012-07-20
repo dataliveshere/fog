@@ -10,7 +10,6 @@ Gem::Specification.new do |s|
   s.date              = '2012-05-27'
   s.rubyforge_project = 'fog'
 
-
   ## Make sure your summary is short. The description may be as long
   ## as you like.
   s.summary     = "brings clouds to you"
@@ -27,10 +26,6 @@ Gem::Specification.new do |s|
   # s.require_paths << 'ext'
   # s.extensions = %w[ext/extconf.rb]
 
-  ## This gets added to the $LOAD_PATH so that 'lib/NAME.rb' can be required as
-  ## require 'NAME.rb' or'/lib/NAME/file.rb' can be as require 'NAME/file.rb'
-  s.require_paths = %w[lib]
-
   ## If your gem includes any executables, list them here.
   s.executables = ["fog"]
 
@@ -43,35 +38,27 @@ Gem::Specification.new do |s|
   ## that are needed for an end user to actually USE your code.
   s.add_dependency('builder')
   s.add_dependency('excon', '~>0.13.0')
-#  s.add_dependency('formatador', '~>0.2.0')
+  #  s.add_dependency('formatador', '~>0.2.0')
   s.add_dependency('multi_json', '~>1.0')
   s.add_dependency('mime-types')
-#  s.add_dependency('net-scp', '~>1.0.4')
-#  s.add_dependency('net-ssh', '>=2.1.3')
+  #  s.add_dependency('net-scp', '~>1.0.4')
+  #  s.add_dependency('net-ssh', '>=2.1.3')
   s.add_dependency('nokogiri', '~>1.5.0')
-#  s.add_dependency('ruby-hmac')
+  #  s.add_dependency('ruby-hmac')
 
   ## List your development dependencies here. Development dependencies are
   ## those that are only needed during development
-#  s.add_development_dependency('jekyll')
-#  s.add_development_dependency('rake')
+  #  s.add_development_dependency('jekyll')
+  #  s.add_development_dependency('rake')
   s.add_development_dependency('rbvmomi')
   s.add_development_dependency('rdoc')
-#  s.add_development_dependency('thor')
+  #  s.add_development_dependency('thor')
   s.add_development_dependency('rspec', '~>1.3.1')
-<<<<<<< HEAD
-  s.add_development_dependency('rbovirt', '>=0.0.11')
+  #  s.add_development_dependency('rbovirt', '>=0.0.9')
   s.add_development_dependency('shindo', '~>0.3.4')
-  s.add_development_dependency('virtualbox', '~>0.9.1')
-  s.add_development_dependency('fission')
-  s.add_development_dependency('pry')
-=======
-#  s.add_development_dependency('rbovirt', '>=0.0.9')
-  s.add_development_dependency('shindo', '~>0.3.4')
-#  s.add_development_dependency('virtualbox', '~>0.9.1')
-#  s.add_development_dependency('fission')
->>>>>>> m2-fog
-#  s.add_development_dependency('ruby-libvirt','~>0.4.0')
+  #  s.add_development_dependency('virtualbox', '~>0.9.1')
+  #  s.add_development_dependency('fission')
+  #  s.add_development_dependency('ruby-libvirt','~>0.4.0')
 
   s.files = `git ls-files`.split("\n")
   s.test_files = `git ls-files -- {spec,tests}/*`.split("\n")
