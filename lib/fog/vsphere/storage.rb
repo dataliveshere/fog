@@ -510,7 +510,12 @@ module Fog
                   break
                 else
                   ds_num +=1
-                  req_size = aum_size + ds.real_free_space - buffer_size
+                  if (ds.real_free_space - buffer_size) > min_ds_size
+                    req_size = aum_size + min_ds_size
+                  else
+                    req_size = aum_size + ds.real_free_space - buffer_size
+                  end
+                  # req_size = aum_size + ds.real_free_space - buffer_size
                   if req_size > vm.data_disks.size &&  (vm.data_disks.size.to_i/ds_num) < min_ds_size
                     ds_arr << ds
                     Fog::Logger.deprecation("fog: for vm #{vm.name} allocated - avgsize =#{vm.data_disks.size/ds_num} - ds #{ds.name} with left size  #{ds.real_free_space}")
