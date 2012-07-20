@@ -537,7 +537,7 @@ module Fog
               end # end of datastore traverse
               if !data_done
                 Fog::Logger.deprecation("there is no enough space for vm #{vm.name} with on host#{host_name}")
-                decommission(solution_list[host_name])
+                decommission(solution_list[host_name]) unless solution_list[host_name].nil?
                 solution_list.delete(host_name)
                 break
               end
@@ -604,6 +604,7 @@ module Fog
 
 
         def decommission(vms)
+          return 0 if vms.size <= 0
           Fog::Logger.deprecation("enter decommission methods[/]")
           original_size = @host_list[vms[0].host_name].local_sum + @host_list[vms[0].host_name].share_sum
           Fog::Logger.deprecation("original size = #{original_size}[/]")
