@@ -496,11 +496,15 @@ module Fog
                 end
                 next if ds.real_free_space == 0
                 if !min_found
-                  min_ds_size = (ds.real_free_space - buffer_size)/2
+                  if (ds.real_free_space - buffer_size) > 2048
+                    min_ds_size = 2048
+                  else
+                    min_ds_size = (ds.real_free_space - buffer_size)
+                  end
                   min_found = true
                 end
                 if ds.real_free_space >= (vm.data_disks.size + buffer_size) && ds_num == 0
-                  Fog::Logger.deprecation("fog: for vm #{vm.name} allocated - allsize = #{vm.data_disks.size} - #ds #{ds.name} with left size  #{@host_list[vm.host_name].local_datastores[ds.name].real_free_space}")
+                  Fog::Logger.deprecation("fog: for vm #{vm.name} allocated - allsize = #{vm.data_disks.size} - #ds #{ds.name} with left size  #{ds.real_free_space}")
                   alloc_volumes(host_name, 'data', vm, [ds], vm.data_disks.size)
                   data_done = true
                   break
@@ -509,12 +513,12 @@ module Fog
                   req_size = aum_size + ds.real_free_space - buffer_size
                   if req_size > vm.data_disks.size &&  (vm.data_disks.size.to_i/ds_num) < min_ds_size
                     ds_arr << ds
-                    Fog::Logger.deprecation("fog: for vm #{vm.name} allocated - avgsize =#{vm.data_disks.size/ds_num} - ds #{ds.name} with left size  #{@host_list[vm.host_name].local_datastores[ds.name].real_free_space}")
+                    Fog::Logger.deprecation("fog: for vm #{vm.name} allocated - avgsize =#{vm.data_disks.size/ds_num} - ds #{ds.name} with left size  #{ds.real_free_space}")
                     alloc_volumes(host_name, 'data', vm, ds_arr, vm.data_disks.size/ds_num)
                     data_done = true
                     break
                   elsif req_size > vm.data_disks.size &&  (vm.data_disks.size/ds_num) >= min_ds_size
-                    Fog::Logger.deprecation("fog: for vm #{vm.name} allocated ds #{ds.name} - mini size = #{min_ds_size}- with left size  #{@host_list[vm.host_name].local_datastores[ds.name].real_free_space}")
+                    Fog::Logger.deprecation("fog: for vm #{vm.name} allocated ds #{ds.name} - mini size = #{min_ds_size}- with left size  #{ds.real_free_space}")
                     alloc_volumes(host_name, 'data', vm, ds_arr, min_ds_size)
                     last_size = vm.data_disks.size - min_ds_size * (ds_arr.size)
                     alloc_volumes(host_name, 'data', vm, [ds], last_size)
