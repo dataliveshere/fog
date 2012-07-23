@@ -354,6 +354,11 @@ module Fog
         def fetch_resources(clusters = nil)
           if !(clusters.nil?)
             clusters.each {|c_name| @clusters << get_mob_ref_by_name('ComputeResource',c_name)}
+            Fog::Logger.deprecation("fog: fetch resource input")
+            @clusters.each do |cs_mob_ref|
+              Fog::Logger.deprecation("fog: @cluster has a cluster which mob ref is #{cs_mob_ref}")
+            end
+            Fog::Logger.deprecation("fog: end")
           end
           if @clusters.size <=0
             Fog::Logger.deprecation("can not load into storage resources without clusters argument[/]")
@@ -471,7 +476,7 @@ module Fog
               end # end of ds_candidate traverse
               if !system_done || !swap_done
                 Fog::Logger.deprecation("there is no enough space for vm #{vm.name} on host#{}") unless system_done && swap_done
-                recovery(solution_list[host_name]) unless solution_list[host_name].nil?
+                recovery(solution_list[host_name]) unless !(solution_list.has_key?(host_name)) || solution_list[host_name].nil?
                 solution_list.delete(host_name)
                 break
               end
@@ -484,7 +489,10 @@ module Fog
               end
               datastore_candidates = datastore_candidates.sort {|x,y| x.real_free_space <=> y.real_free_space}
               sum = 0
-              datastore_candidates.each {|x| sum += x.real_free_space }
+              datastore_candidates.each do |x|
+                sum += x.real_free_space
+              end
+              Fog::Logger.deprecation("fog: sum = #{sum} but reburied is #{vm.data_disks.size}")
               Fog::Logger.deprecation("there is no enough space for vm #{vm.name} on host#{host_name}") if sum < vm.data_disks.size
               Fog::Logger.deprecation("fog: data ds chosen for host #{host_name}")
               datastore_candidates.each do |ds|
@@ -519,12 +527,7 @@ module Fog
                   break
                 else
                   ds_num +=1
-                  if (ds.real_free_space - buffer_size) > min_ds_size
-                    req_size = aum_size + min_ds_size
-                  else
-                    req_size = aum_size + ds.real_free_space - buffer_size
-                  end
-                  # req_size = aum_size + ds.real_free_space - buffer_size
+                  req_size = aum_size + ds.real_free_space - buffer_size
                   if req_size > vm.data_disks.size &&  (vm.data_disks.size.to_i/ds_num) < min_ds_size
                     ds_arr << ds
                     Fog::Logger.deprecation("fog: for vm #{vm.name} allocated - avgsize =#{vm.data_disks.size/ds_num} - ds #{ds.name} with left size  #{ds.real_free_space}")
@@ -539,14 +542,16 @@ module Fog
                     data_done = true
                     break
                   else
-                    aum_size += min_ds_size
+                    aum_size += (ds.real_free_space - buffer_size) #min_ds_size
                     ds_arr << ds
                   end
                 end
               end # end of datastore traverse
-              if !data_done || vm.system_disks.volumes.empty? || vm.swap_disks.volumes.values.empty?
-                Fog::Logger.deprecation("there is no enough space for vm #{vm.name} with on host#{host_name}")
-                recovery(solution_list[host_name]) unless solution_list[host_name].nil?
+              if !data_done #|| vm.system_disks.volumes.empty? || vm.swap_disks.volumes.values.empty?
+                Fog::Logger.deprecation("there is no enough space for vm #{vm.name} on host#{host_name} for data disk")
+                Fog::Logger.deprecation("vm#{vm.name}.system_disks.volumes.empty? is true") if vm.system_disks.volumes.empty?
+                Fog::Logger.deprecation("vm#{vm.name}.wap_disks.volumes.empty? is true") if vm.swap_disks.volumes.empty?
+                recovery(solution_list[host_name]) unless !(solution_list.has_key?(host_name)) || solution_list[host_name].nil?
                 solution_list.delete(host_name)
                 break
               end
