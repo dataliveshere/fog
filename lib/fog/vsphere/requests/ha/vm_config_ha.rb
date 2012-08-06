@@ -3,6 +3,21 @@ module Fog
     class Vsphere
 
       module Shared
+
+        def wait_for_task(task)
+          state = task.info.state
+          while (state != 'error') and (state != 'success')
+            sleep(2)
+            state = task.info.state
+          end
+          case state
+            when 'success'
+              task.info.result
+            when 'error'
+              raise task.info.error
+          end
+        end
+
         private
 
         def get_vm_mob_ref_by_moid(vm_moid)
@@ -53,6 +68,8 @@ module Fog
             rescue => e
               if e.kind_of?(RbVmomi::Fault)
                 return e.errors
+              else
+                return e
               end
             end
             { 'task_state' => task.info.state }
