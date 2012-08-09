@@ -132,7 +132,7 @@ module Fog
           end
           ft_info = vm_mob_ref.config.ftInfo
           if ft_info.nil?
-            {
+            return {
                 'task_state' => 'error',
                 'errors' => 'no proper setting of FT'
             }
@@ -147,11 +147,10 @@ module Fog
             task = vm_mob_ref.TurnOffFaultToleranceForVM_Task()
             wait_for_task(task)
           rescue => e
-            {
+            return {
                 'task_state' => 'error',
                 'errors' => e
-            }
-            return
+             }
           end
           { 'task_state' => task.info.state }
         end
@@ -169,17 +168,15 @@ module Fog
               wait_for_task(task)
             rescue => e
               if e.kind_of?(RbVmomi::Fault)
-                {
+                return {
                     'task_state' => 'error',
                     'errors' => e.errors
                 }
-                return
               else
-                {
+                return {
                     'task_state' => 'error',
                     'errors' => e
                 }
-                return
               end
             end
             { 'task_state' => task.info.state }
