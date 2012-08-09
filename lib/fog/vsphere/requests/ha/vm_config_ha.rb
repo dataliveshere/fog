@@ -58,7 +58,6 @@ module Fog
         end
 
         def is_vm_ft_compatible(vm_mob_ref)
-          #vm_mob_ref = get_mob_ref_by_name('VirtualMachine','Jinbo-master-0') # capable
           state = 'success'
           response = nil
           if vm_mob_ref.config.hardware.numCPU > 1
@@ -71,19 +70,35 @@ module Fog
           devices = vm_mob_ref.config.hardware.device
           devices.each do |vm_device|
             if vm_device.kind_of?(RbVmomi::VIM::VirtualCdrom)
+              virtual_cd = vm_device.dup
+              need_change = false
               if vm_device.connectable.connected
-                response = {
-                    'task_state' => 'error',
-                    'errors' => 'CDROM is connected, can not trigger FT'
-                }
-                return response
+                virtual_cd.connectable.connected = false
+                need_change = true
               end
               if vm_device.connectable.startConnected
-                response = {
-                    'task_state' => 'error',
-                    'errors' => 'CDROM is startConnected, can not trigger FT'
-                }
-                return response
+                virtual_cd.connectable.startConnected = false
+                need_change = true
+              end
+              if need_change
+                begin
+                  device_config_spec = RbVmomi::VIM::VirtualDeviceConfigSpec.new
+                  device_config_spec.device = virtual_cd
+                  device_config_spec.operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation("edit")
+                  config = RbVmomi::VIM::VirtualMachineConfigSpec.new
+                  config.deviceChange = []
+                  config.deviceChange <<  device_config_spec
+                  task = vm_mob_ref.ReconfigVM_Task(:spec => config)
+                  wait_for_task(task)
+                  response = {'task_state' => task.info.state}
+                rescue => e
+                  Fog::Logger.deprecation("throw away RbVmomi::VIM::Fault #{e}")
+                  response = {
+                      'task_state' => 'error',
+                      'errors' => e
+                  }
+                  return response
+                end
               end
             end
             if vm_device.kind_of?(RbVmomi::VIM::VirtualDisk)
