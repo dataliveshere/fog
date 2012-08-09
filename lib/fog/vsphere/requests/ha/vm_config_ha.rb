@@ -57,6 +57,31 @@ module Fog
           ha_enable
         end
 
+        def vm_disable_ft(options ={})
+          raise ArgumentError, "Must pass a vm_moid option" unless options['vm_moid']
+          vm_mob_ref = get_vm_mob_ref_by_moid(options['vm_moid'])
+          if vm_mob_ref.runtime.faultToleranceState == "notConfigured"
+            return { 'task_state' => 'success' }
+          end
+          ft_info = vm_mob_ref.config.ftInfo
+          return { 'task_state' => 'error' } if ft_info.nil?
+          if ft_info.kind_of?(RbVmomi::VIM::FaultToleranceSecondaryConfigInfo)
+            Fog::Logger.deprecation("RbVmomi::VIM::FaultToleranceSecondaryConfigInfo = #{ft_info.primaryVM}")
+            vm_mob_ref = ft_info.primaryVM
+          else
+            Fog::Logger.deprecation("RbVmomi::VIM::FaultTolerancePrimaryConfigInfo = #{ft_info.secondaries}")
+          end
+          begin
+            task = vm_mob_ref.TurnOffFaultToleranceForVM_Task()
+            wait_for_task(task)
+          rescue => e
+            puts e.to_s
+            return e
+          end
+          { 'task_state' => task.info.state }
+        end
+
+
         def vm_enable_ft(options = {})
           raise ArgumentError, "Must pass a vm_moid option" unless options['vm_moid']
           #raise ArgumentError, "Must pass a host_moid option" unless options['host_moid']
