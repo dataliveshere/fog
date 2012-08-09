@@ -57,14 +57,86 @@ module Fog
           ha_enable
         end
 
-        def vm_disable_ft(options ={})
+        def is_vm_ft_compatible(vm_mob_ref)
+          #vm_mob_ref = get_mob_ref_by_name('VirtualMachine','Jinbo-master-0') # capable
+          state = 'success'
+          response = nil
+          if vm_mob_ref.config.hardware.numCPU > 1
+            response = {
+                'task_state' => 'error',
+                'errors' => 'have more than one CPU'
+            }
+            return response
+          end
+          devices = vm_mob_ref.config.hardware.device
+          devices.each do |vm_device|
+            if vm_device.kind_of?(RbVmomi::VIM::VirtualCdrom)
+              if vm_device.connectable.connected
+                response = {
+                    'task_state' => 'error',
+                    'errors' => 'CDROM is connected, can not trigger FT'
+                }
+                return response
+              end
+              if vm_device.connectable.startConnected
+                response = {
+                    'task_state' => 'error',
+                    'errors' => 'CDROM is startConnected, can not trigger FT'
+                }
+                return response
+              end
+            end
+            if vm_device.kind_of?(RbVmomi::VIM::VirtualDisk)
+              virtual_disk = vm_device.dup
+              need_change = false
+              if vm_device.backing.diskMode.include?("independent")
+                virtual_disk.backing.diskMode = "persistent"
+                need_change = true
+              end
+              if vm_device.backing.thinProvisioned
+                Fog::Logger.deprecation("disk.backing.thinProvisioned = true for device #{vm_device}")
+                virtual_disk.backing.thinProvisioned = false
+                virtual_disk.backing.eagerlyScrub = true
+                need_change = true
+              end
+              if need_change
+                begin
+                  device_config_spec = RbVmomi::VIM::VirtualDeviceConfigSpec.new
+                  device_config_spec.device = virtual_disk
+                  device_config_spec.operation = RbVmomi::VIM::VirtualDeviceConfigSpecOperation("edit")
+                  config = RbVmomi::VIM::VirtualMachineConfigSpec.new
+                  config.deviceChange = []
+                  config.deviceChange <<  device_config_spec
+                  task = vm_mob_ref.ReconfigVM_Task(:spec => config)
+                  wait_for_task(task)
+                  response = {'task_state' => task.info.state}
+                rescue => e
+                  Fog::Logger.deprecation("throw away RbVmomi::VIM::Fault #{e}")
+                  response = {
+                      'task_state' => 'error',
+                      'errors' => e
+                  }
+                  return response
+                end
+              end
+            end
+          end
+          response
+        end
+
+        def vm_disable_ft(options = {})
           raise ArgumentError, "Must pass a vm_moid option" unless options['vm_moid']
           vm_mob_ref = get_vm_mob_ref_by_moid(options['vm_moid'])
           if vm_mob_ref.runtime.faultToleranceState == "notConfigured"
             return { 'task_state' => 'success' }
           end
           ft_info = vm_mob_ref.config.ftInfo
-          return { 'task_state' => 'error' } if ft_info.nil?
+          if ft_info.nil?
+            {
+                'task_state' => 'error',
+                'errors' => 'no proper setting of FT'
+            }
+          end
           if ft_info.kind_of?(RbVmomi::VIM::FaultToleranceSecondaryConfigInfo)
             Fog::Logger.deprecation("RbVmomi::VIM::FaultToleranceSecondaryConfigInfo = #{ft_info.primaryVM}")
             vm_mob_ref = ft_info.primaryVM
@@ -75,8 +147,11 @@ module Fog
             task = vm_mob_ref.TurnOffFaultToleranceForVM_Task()
             wait_for_task(task)
           rescue => e
-            puts e.to_s
-            return e
+            {
+                'task_state' => 'error',
+                'errors' => e
+            }
+            return
           end
           { 'task_state' => task.info.state }
         end
@@ -88,13 +163,23 @@ module Fog
             vm_mob_ref = get_vm_mob_ref_by_moid(options['vm_moid'])
             #host_mob_ref = get_host_mob_ref_by_moid(options['host_moid'])
             begin
+              response = is_vm_ft_compatible(vm_mob_ref)
+              return response if response['task_state'] == 'error'
               task = vm_mob_ref.CreateSecondaryVM_Task()
               wait_for_task(task)
             rescue => e
               if e.kind_of?(RbVmomi::Fault)
-                return e.errors
+                {
+                    'task_state' => 'error',
+                    'errors' => e.errors
+                }
+                return
               else
-                return e
+                {
+                    'task_state' => 'error',
+                    'errors' => e
+                }
+                return
               end
             end
             { 'task_state' => task.info.state }
@@ -115,7 +200,6 @@ module Fog
          vm_ha_spec = nil
 
          vm_das_configs = cs_mob_ref.configuration.dasVmConfig
-
 
          vm_das_configs.each{|d|
              if d[:key]._ref.to_s == options['vm_moid']
