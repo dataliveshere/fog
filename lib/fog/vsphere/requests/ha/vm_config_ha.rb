@@ -165,7 +165,7 @@ module Fog
             return {
                 'task_state' => 'error',
                 'errors' => e
-             }
+            }
           end
           { 'task_state' => task.info.state }
         end
@@ -174,92 +174,92 @@ module Fog
         def vm_enable_ft(options = {})
           raise ArgumentError, "Must pass a vm_moid option" unless options['vm_moid']
           #raise ArgumentError, "Must pass a host_moid option" unless options['host_moid']
-            vm_mob_ref = get_vm_mob_ref_by_moid(options['vm_moid'])
-            #host_mob_ref = get_host_mob_ref_by_moid(options['host_moid'])
-            begin
-              response = is_vm_ft_compatible(vm_mob_ref)
-              return response if response['task_state'] == 'error'
-              task = vm_mob_ref.CreateSecondaryVM_Task()
-              wait_for_task(task)
-            rescue => e
-              if e.kind_of?(RbVmomi::Fault)
-                return {
-                    'task_state' => 'error',
-                    'errors' => e.errors
-                }
-              else
-                return {
-                    'task_state' => 'error',
-                    'errors' => e
-                }
-              end
+          vm_mob_ref = get_vm_mob_ref_by_moid(options['vm_moid'])
+          #host_mob_ref = get_host_mob_ref_by_moid(options['host_moid'])
+          begin
+            response = is_vm_ft_compatible(vm_mob_ref)
+            return response if response['task_state'] == 'error'
+            task = vm_mob_ref.CreateSecondaryVM_Task()
+            wait_for_task(task)
+          rescue => e
+            if e.kind_of?(RbVmomi::Fault)
+              return {
+                  'task_state' => 'error',
+                  'errors' => e.errors
+              }
+            else
+              return {
+                  'task_state' => 'error',
+                  'errors' => e
+              }
             end
-            { 'task_state' => task.info.state }
+          end
+          { 'task_state' => task.info.state }
         end
 
 
         def vm_disable_ha(options = {})
-         raise ArgumentError, "Must pass a vm_moid option" unless options['vm_moid']
-         vm_mob_ref = get_vm_mob_ref_by_moid(options['vm_moid'])
-         cs_mob_ref = get_parent_cs_by_vm_mob(vm_mob_ref)
-         ha_enable = is_vm_in_ha_cluster('vm_moid' => options['vm_moid'])
-         if !ha_enable
-           return { 'task_state' => 'error'}
-         end
+          raise ArgumentError, "Must pass a vm_moid option" unless options['vm_moid']
+          vm_mob_ref = get_vm_mob_ref_by_moid(options['vm_moid'])
+          cs_mob_ref = get_parent_cs_by_vm_mob(vm_mob_ref)
+          ha_enable = is_vm_in_ha_cluster('vm_moid' => options['vm_moid'])
+          if !ha_enable
+            return { 'task_state' => 'error'}
+          end
 
-         das_vm_priority = nil
-         vm_das_config = nil
-         vm_ha_spec = nil
+          das_vm_priority = nil
+          vm_das_config = nil
+          vm_ha_spec = nil
 
-         vm_das_configs = cs_mob_ref.configuration.dasVmConfig
+          vm_das_configs = cs_mob_ref.configuration.dasVmConfig
 
-         vm_das_configs.each{|d|
-             if d[:key]._ref.to_s == options['vm_moid']
-               vm_das_config = d
+          vm_das_configs.each{|d|
+            if d[:key]._ref.to_s == options['vm_moid']
+              vm_das_config = d
 
-               if vm_das_config #&& vm_das_config.dasSettings
-                 das_vm_priority = vm_das_config.restartPriority
-               end
+              if vm_das_config #&& vm_das_config.dasSettings
+                das_vm_priority = vm_das_config.restartPriority
+              end
 
-               if das_vm_priority && das_vm_priority == "disabled"
-                 return  { 'task_state' => 'success' }
-               else
-                 vm_ha_spec_info = RbVmomi::VIM::ClusterDasVmConfigInfo(
-                     :key=>vm_mob_ref,
-                     :restartPriority => RbVmomi::VIM::DasVmPriority("disabled")
-                 )
-                 vm_ha_spec = RbVmomi::VIM::ClusterDasVmConfigSpec(
-                     :operation=>RbVmomi::VIM::ArrayUpdateOperation("edit"),
-                     :info=>vm_ha_spec_info
-                 )
-               end
+              if das_vm_priority && das_vm_priority == "disabled"
+                return  { 'task_state' => 'success' }
+              else
+                vm_ha_spec_info = RbVmomi::VIM::ClusterDasVmConfigInfo(
+                    :key=>vm_mob_ref,
+                    :restartPriority => RbVmomi::VIM::DasVmPriority("disabled")
+                )
+                vm_ha_spec = RbVmomi::VIM::ClusterDasVmConfigSpec(
+                    :operation=>RbVmomi::VIM::ArrayUpdateOperation("edit"),
+                    :info=>vm_ha_spec_info
+                )
+              end
 
-               break
+              break
 
-             end
+            end
 
           }
 
-         if vm_ha_spec.nil?
-           vm_ha_spec_info = RbVmomi::VIM::ClusterDasVmConfigInfo(
-               :key=>vm_mob_ref,
-               :restartPriority => RbVmomi::VIM::DasVmPriority("disabled")
-           )
-           vm_ha_spec = RbVmomi::VIM::ClusterDasVmConfigSpec(
-               :operation=>RbVmomi::VIM::ArrayUpdateOperation("add"),
-               :info=>vm_ha_spec_info
-           )
-         end
+          if vm_ha_spec.nil?
+            vm_ha_spec_info = RbVmomi::VIM::ClusterDasVmConfigInfo(
+                :key=>vm_mob_ref,
+                :restartPriority => RbVmomi::VIM::DasVmPriority("disabled")
+            )
+            vm_ha_spec = RbVmomi::VIM::ClusterDasVmConfigSpec(
+                :operation=>RbVmomi::VIM::ArrayUpdateOperation("add"),
+                :info=>vm_ha_spec_info
+            )
+          end
 
-         cluster_config_spec = RbVmomi::VIM::ClusterConfigSpec(
-             :dasConfig=>cs_mob_ref.configuration.dasConfig,
-             :drsConfig => cs_mob_ref.configuration.drsConfig,
-             :dasVmConfigSpec=> [vm_ha_spec]
-         )
-         task =cs_mob_ref.ReconfigureCluster_Task(:spec => cluster_config_spec,:modify=>true )
-         wait_for_task(task)
-         { 'task_state' => task.info.state }
-       end
+          cluster_config_spec = RbVmomi::VIM::ClusterConfigSpec(
+              :dasConfig=>cs_mob_ref.configuration.dasConfig,
+              :drsConfig => cs_mob_ref.configuration.drsConfig,
+              :dasVmConfigSpec=> [vm_ha_spec]
+          )
+          task =cs_mob_ref.ReconfigureCluster_Task(:spec => cluster_config_spec,:modify=>true )
+          wait_for_task(task)
+          { 'task_state' => task.info.state }
+        end
 
       end
     end

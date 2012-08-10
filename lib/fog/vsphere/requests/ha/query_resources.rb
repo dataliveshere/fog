@@ -172,9 +172,9 @@ module Fog
           lun_pair= get_luns_by_host()
           puts "info type is #{ds_mo_ref.info.vmfs.class.to_s}"
           ds_mo_ref.info.vmfs.extent.each do |e|
-             puts "extent name is #{e.diskName}"
-             transport = lun_pair[e.diskName]
-             puts "corresponding target transport is #{ transport = lun_pair[e.diskName].class.to_s}"
+            puts "extent name is #{e.diskName}"
+            transport = lun_pair[e.diskName]
+            puts "corresponding target transport is #{ transport = lun_pair[e.diskName].class.to_s}"
           end
         end
 
