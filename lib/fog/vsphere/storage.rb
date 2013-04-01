@@ -567,7 +567,7 @@ module Fog
                     length = number
                     arr_index = 0
 
-                    datastore_candidates.each do |ds|
+                    datastore_candidates.reverse_each do |ds|
                       if allocated_size <= (ds.real_free_space - buffer_size)
                         alloc_volumes(host_name, 'data', vm, datastore_candidates[arr_index..length], allocated_size)
                         data_done = true
