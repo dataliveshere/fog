@@ -513,7 +513,7 @@ module Fog
                     alloc_volumes(host_name, 'system', vm, [ds], vm.system_disks.size)
                     system_done = true
                     break if swap_done
-                  elsif ds.real_free_space < (vm.req_mem + vm.system_disks.size)&& ds.real_free_space>= vm.swap_disks.space
+                  elsif ds.real_free_space < (vm.req_mem + vm.system_disks.size)&& ds.real_free_space>= vm.swap_disks.size
                     alloc_volumes(host_name, 'swap', vm, [ds], vm.swap_disks.size)
                     swap_done = true
                     break if system_done
